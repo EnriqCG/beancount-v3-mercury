@@ -1,15 +1,15 @@
-# beancount-mercury
+# beancount-v3-mercury
 
-[![PyPI](https://img.shields.io/pypi/v/beancount-mercury)](https://pypi.org/project/beancount-mercury/)
-[![CircleCI](https://circleci.com/gh/mtlynch/beancount-mercury.svg?style=svg)](https://circleci.com/gh/mtlynch/beancount-mercury)
 [![License](http://img.shields.io/:license-mit-blue.svg?style=flat-square)](LICENSE)
 
-beancount-mercury provides an Importer for converting CSV exports Mercury checking transactions into [Beancount](https://github.com/beancount/beancount) format.
+beancount-v3-mercury provides an Importer for converting CSV exports of Mercury checking transactions into [Beancount](https://github.com/beancount/beancount) format.
 
 ## Installation
 
 ```bash
-pip install beancount-mercury
+pip install beancount-v3-mercury
+# or
+uv add beancount-v3-mercury
 ```
 
 ## Usage
