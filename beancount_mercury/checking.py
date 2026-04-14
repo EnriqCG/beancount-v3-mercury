@@ -8,7 +8,7 @@ from beancount.core import amount
 from beancount.core import data
 from beancount.core import flags
 from beancount.core import number as beancount_number
-from beancount.ingest import importer
+import beangulp
 
 _COLUMN_DATE = 'Date (UTC)'
 # Prior to 2022-11, the date column label didn't have the UTC designation.
@@ -22,7 +22,7 @@ _COLUMN_STATUS = 'Status'
 _FILENAME_PATTERN = re.compile(r'transactions-.+\.CSV', re.IGNORECASE)
 
 
-class CheckingImporter(importer.ImporterProtocol):
+class CheckingImporter(beangulp.Importer):
 
     def __init__(self, account, currency='USD', account_patterns=None):
         self._account = account
@@ -37,21 +37,21 @@ class CheckingImporter(importer.ImporterProtocol):
         return amount.Amount(beancount_number.D(amount_raw.replace('$', '')),
                              self._currency)
 
-    def file_date(self, file):
-        return max(map(lambda x: x.date, self.extract(file)))
+    def date(self, filepath):
+        return max(map(lambda x: x.date, self.extract(filepath)))
 
-    def file_account(self, _):
+    def account(self, filepath):
         return self._account
 
-    def identify(self, file):
-        return _FILENAME_PATTERN.match(os.path.basename(file.name))
+    def identify(self, filepath):
+        return _FILENAME_PATTERN.search(os.path.basename(filepath))
 
-    def extract(self, f):
+    def extract(self, filepath, existing=None):
         transactions = []
 
-        with open(f.name, encoding='utf-8') as csv_file:
+        with open(filepath, encoding='utf-8') as csv_file:
             for index, row in enumerate(csv.DictReader(csv_file)):
-                metadata = data.new_metadata(f.name, index)
+                metadata = data.new_metadata(filepath, index)
                 transaction = self._extract_transaction_from_row(row, metadata)
                 if not transaction:
                     continue
