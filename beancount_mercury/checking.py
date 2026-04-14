@@ -3,12 +3,10 @@ import datetime
 import os
 import re
 
-import titlecase
-from beancount.core import amount
-from beancount.core import data
-from beancount.core import flags
-from beancount.core import number as beancount_number
 import beangulp
+import titlecase
+from beancount.core import amount, data, flags
+from beancount.core import number as beancount_number
 
 _COLUMN_DATE = 'Date (UTC)'
 # Prior to 2022-11, the date column label didn't have the UTC designation.
@@ -23,7 +21,6 @@ _FILENAME_PATTERN = re.compile(r'transactions-.+\.CSV', re.IGNORECASE)
 
 
 class CheckingImporter(beangulp.Importer):
-
     def __init__(self, account, currency='USD', account_patterns=None):
         self._account = account
         self._currency = currency
@@ -31,11 +28,13 @@ class CheckingImporter(beangulp.Importer):
         if account_patterns:
             for pattern, account_name in account_patterns:
                 self._account_patterns.append(
-                    (re.compile(pattern, flags=re.IGNORECASE), account_name))
+                    (re.compile(pattern, flags=re.IGNORECASE), account_name)
+                )
 
     def _parse_amount(self, amount_raw):
-        return amount.Amount(beancount_number.D(amount_raw.replace('$', '')),
-                             self._currency)
+        return amount.Amount(
+            beancount_number.D(amount_raw.replace('$', '')), self._currency
+        )
 
     def date(self, filepath):
         return max(map(lambda x: x.date, self.extract(filepath)))
@@ -69,8 +68,9 @@ class CheckingImporter(beangulp.Importer):
         else:
             date_raw = row[_COLUMN_DATE_LEGACY]
 
-        transaction_date = datetime.datetime.strptime(date_raw,
-                                                      '%m-%d-%Y').date()
+        transaction_date = datetime.datetime.strptime(
+            date_raw, '%m-%d-%Y'
+        ).date()
 
         payee = titlecase.titlecase(row[_COLUMN_PAYEE])
 
@@ -88,31 +88,35 @@ class CheckingImporter(beangulp.Importer):
         else:
             return None  # 0 dollar transaction
 
-        if transaction_amount == amount.Amount(beancount_number.D(0),
-                                               self._currency):
+        if transaction_amount == amount.Amount(
+            beancount_number.D(0), self._currency
+        ):
             return None
 
         postings = [
-            data.Posting(account=self._account,
-                         units=transaction_amount,
-                         cost=None,
-                         price=None,
-                         flag=None,
-                         meta=None)
+            data.Posting(
+                account=self._account,
+                units=transaction_amount,
+                cost=None,
+                price=None,
+                flag=None,
+                meta=None,
+            )
         ]
         for pattern, account_name in self._account_patterns:
             if pattern.search(payee) or pattern.search(narration):
                 postings.append(
-                    data.Posting(account=account_name,
-                                 units=-transaction_amount,
-                                 cost=None,
-                                 price=None,
-                                 flag=None,
-                                 meta=None))
+                    data.Posting(
+                        account=account_name,
+                        units=-transaction_amount,
+                        cost=None,
+                        price=None,
+                        flag=None,
+                        meta=None,
+                    )
+                )
                 break
 
-        # For some reason, pylint thinks data.Transactions is not callable.
-        # pylint: disable=not-callable
         return data.Transaction(
             meta=metadata,
             date=transaction_date,
