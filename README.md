@@ -24,11 +24,12 @@ importers = [
     beancount_mercury.CheckingImporter(
         'Assets:Checking:Mercury',
         currency='USD',
-        account_patterns=[
+        account_patterns={
           # These are example patterns. You can add your own.
-          ('GITHUB', 'Expenses:Cloud-Services:Source-Hosting:Github'),
-          ('Fedex',  'Expenses:Postage:FedEx'),
-        ]
+          'Expenses:Cloud-Services:Source-Hosting:Github': ['GITHUB'],
+          'Expenses:Postage:FedEx': ['Fedex'],
+          'Expenses:Supermarket': ['REWE', 'ALDI'],
+        }
     ),
 ]
 
@@ -36,13 +37,17 @@ if __name__ == '__main__':
     Ingest(importers).cli()
 ```
 
-The `account_patterns` parameter is a list of (regex, account) pairs. For each line in your Mercury CSV, `CheckingImporter` will attempt to create a matching posting on the transaction by matching the payee or narration to the regexes. The regexes are in priority order, with earlier patterns taking priority over later patterns.
+The `account_patterns` parameter is a dictionary mapping account names to lists of regex patterns. For each line in your Mercury CSV, `CheckingImporter` will attempt to create a matching posting on the transaction by matching the payee or narration to the regexes. Accounts are checked in dictionary order, with earlier accounts taking priority over later accounts.
 
 Once this configuration is in place, you can extract transactions from a Mercury CSV export:
 
 ```bash
 python import.py extract mercury-transactions.csv
 ```
+
+## Beancount v2 Compatibility
+
+Although this package is designed for Beancount v3, it is also compatible with Beancount v2 since it depends on `beancount>=2.3.5` and uses [beangulp](https://github.com/beancount/beangulp) as the importer framework, which supports both versions.
 
 ## Resources
 
