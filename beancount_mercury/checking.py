@@ -26,10 +26,14 @@ class CheckingImporter(beangulp.Importer):
         self._currency = currency
         self._account_patterns = []
         if account_patterns:
-            for pattern, account_name in account_patterns:
-                self._account_patterns.append(
-                    (re.compile(pattern, flags=re.IGNORECASE), account_name)
-                )
+            for account_name, patterns in account_patterns.items():
+                for pattern in patterns:
+                    self._account_patterns.append(
+                        (
+                            re.compile(pattern, flags=re.IGNORECASE),
+                            account_name,
+                        )
+                    )
 
     def _parse_amount(self, amount_raw):
         return amount.Amount(

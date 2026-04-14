@@ -93,12 +93,11 @@ def test_extracts_single_transaction_with_matching_account(tmp_path):
 
     directives = CheckingImporter(
         account='Assets:Checking:Mercury',
-        account_patterns=[
-            (
+        account_patterns={
+            'Expenses:Equipment:Bowling-Balls:Bowlers-Paradise': [
                 '^Bowlers Paradise$',
-                'Expenses:Equipment:Bowling-Balls:Bowlers-Paradise',
-            )
-        ],
+            ],
+        },
     ).extract(str(mercury_file))
 
     assert (
@@ -125,13 +124,12 @@ def test_matches_transactions_by_priority(tmp_path):
 
     directives = CheckingImporter(
         account='Assets:Checking:Mercury',
-        account_patterns=[
-            (
+        account_patterns={
+            'Expenses:Equipment:Bowling-Balls:Bowlers-Paradise': [
                 '^Bowlers Paradise$',
-                'Expenses:Equipment:Bowling-Balls:Bowlers-Paradise',
-            ),
-            ('Paradise', 'Expenses:Training:Paradise-Golf'),
-        ],
+            ],
+            'Expenses:Training:Paradise-Golf': ['Paradise'],
+        },
     ).extract(str(mercury_file))
 
     assert (
@@ -150,6 +148,39 @@ def test_matches_transactions_by_priority(tmp_path):
     )
 
 
+def test_matches_multiple_patterns_per_account(tmp_path):
+    mercury_file = tmp_path / 'transactions-dummy-to-feb052022.csv'
+    mercury_file.write_text(
+        _unindent("""
+            Date (UTC),Description,Amount,Status,Bank Description,Reference,Note
+            02-04-2022,REWE Supermarket,-23.50,Sent,REWE SUPERMARKET,,
+            02-05-2022,ALDI Store,-15.75,Sent,ALDI STORE,,
+            """)
+    )
+
+    directives = CheckingImporter(
+        account='Assets:Checking:Mercury',
+        account_patterns={
+            'Expenses:Supermarket': ['REWE', 'ALDI'],
+        },
+    ).extract(str(mercury_file))
+
+    assert (
+        _unindent(
+            """
+        2022-02-04 * "REWE Supermarket" "REWE SUPERMARKET"
+          Assets:Checking:Mercury  -23.50 USD
+          Expenses:Supermarket      23.50 USD
+
+        2022-02-05 * "ALDI Store" "ALDI STORE"
+          Assets:Checking:Mercury  -15.75 USD
+          Expenses:Supermarket      15.75 USD
+        """.rstrip()
+        )
+        == _stringify_directives(directives).strip()
+    )
+
+
 def test_extracts_incoming_transaction(tmp_path):
     mercury_file = tmp_path / 'transactions-dummy-to-feb052022.csv'
     mercury_file.write_text(
@@ -161,7 +192,9 @@ def test_extracts_incoming_transaction(tmp_path):
 
     directives = CheckingImporter(
         account='Assets:Checking:Mercury',
-        account_patterns=[('^Charlie Customer$', 'Income:Sales')],
+        account_patterns={
+            'Income:Sales': ['^Charlie Customer$'],
+        },
     ).extract(str(mercury_file))
 
     assert (
