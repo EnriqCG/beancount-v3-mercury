@@ -2,7 +2,7 @@ import io
 import textwrap
 
 import pytest  # NOQA, pylint: disable=unused-import
-from beancount.ingest import extract
+from beancount.parser import printer
 
 from . import CheckingImporter
 
@@ -13,7 +13,7 @@ def _unindent(indented):
 
 def _stringify_directives(directives):
     f = io.StringIO()
-    extract.print_extracted_entries(directives, f)
+    printer.print_entries(directives, file=f)
     return f.getvalue()
 
 
@@ -25,8 +25,8 @@ def test_identifies_mercury_file(tmp_path):
             02-04-2022,Joe Vendor,-550.00,Sent,Send Money transaction initiated on Mercury,"From Dummy, LLC for bowling balls",
             """))
 
-    with mercury_file.open() as f:
-        assert CheckingImporter(account='Assets:Checking:Mercury').identify(f)
+    assert CheckingImporter(
+        account='Assets:Checking:Mercury').identify(str(mercury_file))
 
 
 def test_extracts_single_transaction_without_matching_account(tmp_path):
@@ -37,9 +37,8 @@ def test_extracts_single_transaction_without_matching_account(tmp_path):
             02-04-2022,Joe Vendor,-550.00,Sent,Send Money transaction initiated on Mercury,"From Dummy, LLC for bowling balls",
             """))
 
-    with mercury_file.open() as f:
-        directives = CheckingImporter(
-            account='Assets:Checking:Mercury').extract(f)
+    directives = CheckingImporter(
+        account='Assets:Checking:Mercury').extract(str(mercury_file))
 
     assert _unindent("""
         2022-02-04 * "Joe Vendor" "Send Money transaction initiated on Mercury - From Dummy, LLC for bowling balls"
@@ -58,9 +57,8 @@ def test_extracts_single_transaction_without_matching_account_legacy_format(
             02-04-2022,Joe Vendor,-550.00,Sent,Send Money transaction initiated on Mercury,"From Dummy, LLC for bowling balls",
             """))
 
-    with mercury_file.open() as f:
-        directives = CheckingImporter(
-            account='Assets:Checking:Mercury').extract(f)
+    directives = CheckingImporter(
+        account='Assets:Checking:Mercury').extract(str(mercury_file))
 
     assert _unindent("""
         2022-02-04 * "Joe Vendor" "Send Money transaction initiated on Mercury - From Dummy, LLC for bowling balls"
@@ -76,13 +74,12 @@ def test_extracts_single_transaction_with_matching_account(tmp_path):
             02-04-2022,Bowlers Paradise,-550.00,Sent,Send Money transaction initiated on Mercury,"From Dummy, LLC for bowling balls",
             """))
 
-    with mercury_file.open() as f:
-        directives = CheckingImporter(
-            account='Assets:Checking:Mercury',
-            account_patterns=[
-                ('^Bowlers Paradise$',
-                 'Expenses:Equipment:Bowling-Balls:Bowlers-Paradise')
-            ]).extract(f)
+    directives = CheckingImporter(
+        account='Assets:Checking:Mercury',
+        account_patterns=[
+            ('^Bowlers Paradise$',
+             'Expenses:Equipment:Bowling-Balls:Bowlers-Paradise')
+        ]).extract(str(mercury_file))
 
     assert _unindent("""
         2022-02-04 * "Bowlers Paradise" "Send Money transaction initiated on Mercury - From Dummy, LLC for bowling balls"
@@ -100,14 +97,13 @@ def test_matches_transactions_by_priority(tmp_path):
             02-05-2022,Paradise Golf,-150.75,Sent,PARADISE GOLF,,
             """))
 
-    with mercury_file.open() as f:
-        directives = CheckingImporter(
-            account='Assets:Checking:Mercury',
-            account_patterns=[
-                ('^Bowlers Paradise$',
-                 'Expenses:Equipment:Bowling-Balls:Bowlers-Paradise'),
-                ('Paradise', 'Expenses:Training:Paradise-Golf')
-            ]).extract(f)
+    directives = CheckingImporter(
+        account='Assets:Checking:Mercury',
+        account_patterns=[
+            ('^Bowlers Paradise$',
+             'Expenses:Equipment:Bowling-Balls:Bowlers-Paradise'),
+            ('Paradise', 'Expenses:Training:Paradise-Golf')
+        ]).extract(str(mercury_file))
 
     assert _unindent("""
         2022-02-04 * "Bowlers Paradise" "Send Money transaction initiated on Mercury - From Dummy, LLC for bowling balls"
@@ -128,11 +124,11 @@ def test_extracts_incoming_transaction(tmp_path):
             01-30-2022,Charlie Customer,694.04,Sent,CHARLIE CUSTOMER,,
             """))
 
-    with mercury_file.open() as f:
-        directives = CheckingImporter(account='Assets:Checking:Mercury',
-                                      account_patterns=[
-                                          ('^Charlie Customer$', 'Income:Sales')
-                                      ]).extract(f)
+    directives = CheckingImporter(
+        account='Assets:Checking:Mercury',
+        account_patterns=[
+            ('^Charlie Customer$', 'Income:Sales')
+        ]).extract(str(mercury_file))
 
     assert _unindent("""
         2022-01-30 * "Charlie Customer" "CHARLIE CUSTOMER"
@@ -149,8 +145,7 @@ def test_ignores_failed_transaction(tmp_path):
             01-29-2021,Expensivo's Diamond Emporium,-5876.95,Failed,Expensivo's Diamond Emporium; TRANSACTION_BLOCKED --  C10 -- User is not allowed to send over 5000.0 per 1 day(s).,,
             """))
 
-    with mercury_file.open() as f:
-        directives = CheckingImporter(
-            account='Assets:Checking:Mercury').extract(f)
+    directives = CheckingImporter(
+        account='Assets:Checking:Mercury').extract(str(mercury_file))
 
     assert len(directives) == 0
